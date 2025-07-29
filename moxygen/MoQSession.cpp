@@ -2333,6 +2333,8 @@ void MoQSession::onSubscribe(SubscribeRequest subscribeRequest) {
 folly::coro::Task<void> MoQSession::handleSubscribe(
     SubscribeRequest sub,
     std::shared_ptr<TrackPublisherImpl> trackPublisher) {
+
+    XLOG(DBG1) << "function MoQSession::handleSubscribe" ;
   folly::RequestContextScopeGuard guard;
   setRequestSession();
   auto requestID = sub.requestID;
@@ -2341,6 +2343,9 @@ folly::coro::Task<void> MoQSession::handleSubscribe(
       publishHandler_->subscribe(
           std::move(sub),
           std::static_pointer_cast<TrackConsumer>(trackPublisher))));
+
+    XLOG(DBG1) << "[function MoQSession::handleSubscribe] after publishHandler_->subscribe" ;
+
   if (subscribeResult.hasException()) {
     XLOG(ERR) << "Exception in Publisher callback ex="
               << subscribeResult.exception().what().toStdString();
@@ -2357,10 +2362,16 @@ folly::coro::Task<void> MoQSession::handleSubscribe(
     subErr.requestID = requestID; // In case app got it wrong
     subscribeError(subErr);
   } else {
+    XLOG(DBG1) << "[function MoQSession::handleSubscribe] after publishHandler_->subscribe : subscribeResult has no error" ;
+
     auto subHandle = std::move(subscribeResult->value());
+
+    XLOG(DBG1) << "before subHandle->subscribeOk" ;
     auto subOk = subHandle->subscribeOk();
+    XLOG(DBG1) << "after subHandle->subscribeOk" ;
     subOk.requestID = requestID;
     // TODO: verify TrackAlias is unique
+    XLOG(DBG1) << "before subscribeOk" ;
     subscribeOk(subOk);
 
     trackPublisher->setSubscriptionHandle(std::move(subHandle));
@@ -3627,14 +3638,19 @@ folly::coro::Task<Publisher::SubscribeResult> MoQSession::subscribe(
 std::shared_ptr<TrackConsumer> MoQSession::subscribeOk(
     const SubscribeOk& subOk) {
   XLOG(DBG1) << __func__ << " sess=" << this;
+
   MOQ_PUBLISHER_STATS(publisherStatsCallback_, onSubscribeSuccess);
+
   auto it = pubTracks_.find(subOk.requestID);
+
   if (it == pubTracks_.end()) {
     XLOG(ERR) << "Invalid Subscribe OK, id=" << subOk.requestID;
     return nullptr;
   }
+
   auto trackPublisher =
       std::dynamic_pointer_cast<TrackPublisherImpl>(it->second);
+
   if (!trackPublisher) {
     XLOG(ERR) << "subscribe ID maps to a fetch, not a subscribe, id="
               << subOk.requestID;
@@ -3644,18 +3660,32 @@ std::shared_ptr<TrackConsumer> MoQSession::subscribeOk(
          "Invalid internal state"});
     return nullptr;
   }
+
+  XLOG(DBG1) << "trackPublisher exists" << this;
+
   trackPublisher->setGroupOrder(subOk.groupOrder);
+
+  XLOG(DBG1) << "before moqFrameWriter_.writeSubscribeOk" << this;
+
   auto res = moqFrameWriter_.writeSubscribeOk(controlWriteBuf_, subOk);
+
+  XLOG(DBG1) << "after moqFrameWriter_.writeSubscribeOk" << this;
+
   if (!res) {
     XLOG(ERR) << "writeSubscribeOk failed sess=" << this;
     return nullptr;
   }
 
   if (logger_) {
+    XLOG(ERR) << "before logger_->logSubscribeOk(subOk)" << this;
+
     logger_->logSubscribeOk(subOk);
   }
 
+    XLOG(ERR) << "before controlWriteEvent_.signal()" << this;
+
   controlWriteEvent_.signal();
+
   return std::static_pointer_cast<TrackConsumer>(trackPublisher);
 }
 

@@ -23,9 +23,17 @@ using namespace moxygen;
 class MoQRelayServer : MoQServer {
  public:
   MoQRelayServer()
-      : MoQServer(FLAGS_port, FLAGS_cert, FLAGS_key, FLAGS_endpoint) {}
+      : MoQServer(FLAGS_port, FLAGS_cert, FLAGS_key, FLAGS_endpoint) {
+    // std::cout << "🚫 FLAGS_port" << FLAGS_port << std::endl;
+    // std::cout << "🚫 FLAGS_cert" << FLAGS_cert << std::endl;
+    // std::cout << "🚫 FLAGS_key" << FLAGS_key << std::endl;
+    // std::cout << "🚫 FLAGS_endpoint" << FLAGS_endpoint << std::endl;
+
+      }
 
   void onNewSession(std::shared_ptr<MoQSession> clientSession) override {
+    std::cout << "🚫 onNewSession" << std::endl;
+    // printf("onNewSession");
     clientSession->setPublishHandler(relay_);
     clientSession->setSubscribeHandler(relay_);
   }
@@ -41,9 +49,16 @@ class MoQRelayServer : MoQServer {
 } // namespace
 
 int main(int argc, char* argv[]) {
+    std::cout << "🚫 moq relay server : main start" << std::endl;
+
   folly::Init init(&argc, &argv, true);
   MoQRelayServer moqRelayServer;
   folly::EventBase evb;
+    std::cout << "🚫 before startRelayClient" << std::endl;
+
+    
+    std::cout << "🚫 after startRelayClient" << std::endl;
   evb.loopForever();
+    std::cout << "🚫 after loop Forever" << std::endl;
   return 0;
 }
